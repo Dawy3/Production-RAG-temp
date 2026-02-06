@@ -85,14 +85,15 @@ class PromptManager:
 
         return self.system_prompt, user_prompt
 
-    def _format_history(self, history: list[dict], max_turns: int = 3) -> str:
-        """Format conversation history (last N turns)."""
+    def _format_history(self, history: list[dict]) -> str:
+        """Format conversation history from ConversationMemory.get().
+
+        Memory already handles windowing (last 3 full) and summarization
+        (older messages capped at ~150 tokens). Just format as text here.
+        """
         lines = []
-        for msg in history[-max_turns:]:
+        for msg in history:
             role = msg.get("role", "user")
             content = msg.get("content", "")
-            # Truncate long messages
-            if len(content) > 200:
-                content = content[:200] + "..."
             lines.append(f"{role}: {content}")
         return "\n".join(lines)
