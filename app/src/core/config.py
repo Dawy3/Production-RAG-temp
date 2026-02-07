@@ -1,18 +1,16 @@
 """
-Configuration Management for RAG Backend.
+Configuration for RAG Backend.
 
-All field names match their .env variable names exactly (UPPERCASE).
-Lowercase property aliases provided for code compatibility.
+Field names match .env variable names (UPPERCASE).
+Lowercase property aliases for code convenience.
 
 Example .env:
-    LLM_PROVIDER=openai
+    OPENAI_API_KEY=sk-...
     LLM_MODEL=gpt-4o-mini
     EMBEDDING_MODEL_NAME=text-embedding-3-small
     QDRANT_URL=http://localhost:6333
 """
 
-import os
-from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -21,39 +19,23 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
-    """Application environments."""
-    DEVELOPMENT = "development"
-    STAGING = "staging"
-    PRODUCTION = "production"
-
-
 # =============================================================================
-# EMBEDDING CONFIG
+# EMBEDDING
 # =============================================================================
-class EmbeddingModelConfig(BaseSettings):
-    """Embedding model configuration."""
+class EmbeddingConfig(BaseSettings):
+    """OpenAI embedding model settings."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Fields match env var names
     EMBEDDING_MODEL_NAME: str = Field(default="text-embedding-3-small")
-    EMBEDDING_MODEL_VERSION: str = Field(default="v1")
     EMBEDDING_MODEL_PROVIDER: str = Field(default="openai")
     EMBEDDING_DIMENSIONS: int = Field(default=1536)
-    EMBEDDING_MAX_TOKENS: int = Field(default=8191)
     EMBEDDING_BATCH_SIZE: int = Field(default=100)
-    EMBEDDING_TIMEOUT: float = Field(default=30.0)
     EMBEDDING_MAX_RETRIES: int = Field(default=3)
 
-    # Lowercase aliases for code compatibility
     @property
     def model_name(self) -> str:
         return self.EMBEDDING_MODEL_NAME
-
-    @property
-    def model_version(self) -> str:
-        return self.EMBEDDING_MODEL_VERSION
 
     @property
     def model_provider(self) -> str:
@@ -64,41 +46,26 @@ class EmbeddingModelConfig(BaseSettings):
         return self.EMBEDDING_DIMENSIONS
 
     @property
-    def max_tokens(self) -> int:
-        return self.EMBEDDING_MAX_TOKENS
-
-    @property
     def batch_size(self) -> int:
         return self.EMBEDDING_BATCH_SIZE
-
-    @property
-    def request_timeout(self) -> float:
-        return self.EMBEDDING_TIMEOUT
 
     @property
     def max_retries(self) -> int:
         return self.EMBEDDING_MAX_RETRIES
 
-    @property
-    def model_identifier(self) -> str:
-        return f"{self.EMBEDDING_MODEL_PROVIDER}/{self.EMBEDDING_MODEL_NAME}/{self.EMBEDDING_MODEL_VERSION}"
-
 
 # =============================================================================
-# CHUNKING CONFIG
+# CHUNKING
 # =============================================================================
 class ChunkingConfig(BaseSettings):
-    """Chunking configuration."""
+    """Text chunking settings."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     CHUNK_STRATEGY: str = Field(default="recursive")
     CHUNK_SIZE: int = Field(default=512)
     CHUNK_OVERLAP: int = Field(default=50)
-    CHUNK_MIN_SIZE: int = Field(default=100)
-    CHUNK_SEMANTIC_THRESHOLD: float = Field(default=0.5)
 
-    # Lowercase aliases
     @property
     def strategy(self) -> str:
         return self.CHUNK_STRATEGY
@@ -111,192 +78,52 @@ class ChunkingConfig(BaseSettings):
     def chunk_overlap(self) -> int:
         return self.CHUNK_OVERLAP
 
-    @property
-    def min_chunk_size(self) -> int:
-        return self.CHUNK_MIN_SIZE
-
-    @property
-    def semantic_threshold(self) -> float:
-        return self.CHUNK_SEMANTIC_THRESHOLD
-
-    @property
-    def separators(self) -> list:
-        return ["\n\n", "\n", ". ", " ", ""]
-
 
 # =============================================================================
-# RETRIEVAL CONFIG
-# =============================================================================
-class RetrievalConfig(BaseSettings):
-    """Retrieval and search configuration."""
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    VECTOR_WEIGHT: float = Field(default=5.0)
-    BM25_WEIGHT: float = Field(default=3.0)
-    RECENCY_WEIGHT: float = Field(default=0.2)
-    VECTOR_TOP_K: int = Field(default=100)
-    RERANK_TOP_K: int = Field(default=10)
-    HNSW_M: int = Field(default=16)
-    HNSW_EF_SEARCH: int = Field(default=100)
-    RELEVANCE_THRESHOLD: float = Field(default=0.6)
-
-    # Lowercase aliases
-    @property
-    def vector_weight(self) -> float:
-        return self.VECTOR_WEIGHT
-
-    @property
-    def bm25_weight(self) -> float:
-        return self.BM25_WEIGHT
-
-    @property
-    def recency_weight(self) -> float:
-        return self.RECENCY_WEIGHT
-
-    @property
-    def top_k_retrieval(self) -> int:
-        return self.VECTOR_TOP_K
-
-    @property
-    def top_k_rerank(self) -> int:
-        return self.RERANK_TOP_K
-
-    @property
-    def hnsw_m(self) -> int:
-        return self.HNSW_M
-
-    @property
-    def hnsw_ef_search(self) -> int:
-        return self.HNSW_EF_SEARCH
-
-    @property
-    def relevance_threshold(self) -> float:
-        return self.RELEVANCE_THRESHOLD
-
-
-# =============================================================================
-# CACHE CONFIG
-# =============================================================================
-class CacheConfig(BaseSettings):
-    """Caching configuration."""
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    CACHE_SEMANTIC_ENABLED: bool = Field(default=True)
-    CACHE_SEMANTIC_THRESHOLD: float = Field(default=0.92)
-    CACHE_SEMANTIC_TTL: int = Field(default=3600)
-    CACHE_EMBEDDING_ENABLED: bool = Field(default=True)
-    CACHE_EMBEDDING_TTL: int = Field(default=86400)
-    REDIS_URL: str = Field(default="redis://localhost:6379/0")
-    REDIS_MAX_CONNECTIONS: int = Field(default=10)
-
-    # Lowercase aliases
-    @property
-    def semantic_cache_enabled(self) -> bool:
-        return self.CACHE_SEMANTIC_ENABLED
-
-    @property
-    def semantic_cache_threshold(self) -> float:
-        return self.CACHE_SEMANTIC_THRESHOLD
-
-    @property
-    def semantic_cache_ttl(self) -> int:
-        return self.CACHE_SEMANTIC_TTL
-
-    @property
-    def embedding_cache_enabled(self) -> bool:
-        return self.CACHE_EMBEDDING_ENABLED
-
-    @property
-    def embedding_cache_ttl(self) -> int:
-        return self.CACHE_EMBEDDING_TTL
-
-    @property
-    def redis_url(self) -> str:
-        return self.REDIS_URL
-
-    @property
-    def redis_max_connections(self) -> int:
-        return self.REDIS_MAX_CONNECTIONS
-
-
-# =============================================================================
-# LLM CONFIG
+# LLM
 # =============================================================================
 class LLMConfig(BaseSettings):
-    """
-    LLM configuration. Supports: openrouter, openai, local
+    """LLM provider settings.
 
-    .env:
-        LLM_PROVIDER=openrouter
+    Works with any OpenAI-compatible API (OpenAI, OpenRouter, local).
+    Set LLM_BASE_URL to switch providers.
+
+    .env examples:
+        # OpenAI (default)
+        OPENAI_API_KEY=sk-...
+        LLM_MODEL=gpt-4o-mini
+
+        # OpenRouter
+        OPENAI_API_KEY=sk-or-...
+        LLM_BASE_URL=https://openrouter.ai/api/v1
         LLM_MODEL=openai/gpt-4o-mini
-        OPENROUTER_API_KEY=sk-or-xxx
+
+        # Local (Ollama, LM Studio, etc.)
+        LLM_BASE_URL=http://localhost:11434/v1
+        LLM_MODEL=llama3
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Provider & Model
-    LLM_PROVIDER: str = Field(default="openai")
-    LLM_MODEL: str = Field(default="gpt-4o-mini")
-
-    # API Keys
     OPENAI_API_KEY: Optional[str] = Field(default=None)
-    OPENROUTER_API_KEY: Optional[str] = Field(default=None)
-
-    # Base URLs
-    OPENAI_BASE_URL: str = Field(default="https://api.openai.com/v1")
-    OPENROUTER_BASE_URL: str = Field(default="https://openrouter.ai/api/v1")
-    LOCAL_LLM_URL: str = Field(default="http://localhost:8080/v1")
-
-    # Tier Models (OpenAI only)
-    LLM_TIER1_MODEL: Optional[str] = Field(default=None)
-    LLM_TIER2_MODEL: Optional[str] = Field(default=None)
-    LLM_TIER3_MODEL: Optional[str] = Field(default=None)
-
-    # Generation Parameters
+    LLM_BASE_URL: Optional[str] = Field(default=None)
+    LLM_MODEL: str = Field(default="gpt-4o-mini")
     LLM_MAX_TOKENS: int = Field(default=1024)
     LLM_TEMPERATURE: float = Field(default=0.7)
-    LLM_TIMEOUT: float = Field(default=30.0)
+    LLM_TIMEOUT: float = Field(default=60.0)
     LLM_MAX_RETRIES: int = Field(default=3)
-    LLM_STREAMING: bool = Field(default=True)
 
-    # Lowercase aliases
     @property
-    def provider(self) -> str:
-        return self.LLM_PROVIDER
+    def api_key(self) -> Optional[str]:
+        return self.OPENAI_API_KEY
+
+    @property
+    def base_url(self) -> Optional[str]:
+        return self.LLM_BASE_URL
 
     @property
     def model(self) -> str:
         return self.LLM_MODEL
-
-    @property
-    def api_key(self) -> Optional[str]:
-        if self.LLM_PROVIDER == "openrouter":
-            return self.OPENROUTER_API_KEY
-        elif self.LLM_PROVIDER == "openai":
-            return self.OPENAI_API_KEY
-        return None
-
-    @property
-    def base_url(self) -> str:
-        if self.LLM_PROVIDER == "openrouter":
-            return self.OPENROUTER_BASE_URL
-        elif self.LLM_PROVIDER == "local":
-            return self.LOCAL_LLM_URL
-        return self.OPENAI_BASE_URL
-
-    @property
-    def effective_tier1_model(self) -> str:
-        return self.LLM_TIER1_MODEL or self.LLM_MODEL
-
-    @property
-    def effective_tier2_model(self) -> str:
-        return self.LLM_TIER2_MODEL or self.LLM_MODEL
-
-    @property
-    def effective_tier3_model(self) -> str:
-        return self.LLM_TIER3_MODEL or self.LLM_MODEL
 
     @property
     def max_tokens(self) -> int:
@@ -314,139 +141,18 @@ class LLMConfig(BaseSettings):
     def max_retries(self) -> int:
         return self.LLM_MAX_RETRIES
 
-    @property
-    def streaming_enabled(self) -> bool:
-        return self.LLM_STREAMING
-
-    # Legacy
-    @property
-    def openai_api_key(self) -> Optional[str]:
-        return self.OPENAI_API_KEY
-
-    @property
-    def openai_model(self) -> str:
-        return self.LLM_MODEL
-
 
 # =============================================================================
-# CONTEXT CONFIG
+# QDRANT
 # =============================================================================
-class ContextConfig(BaseSettings):
-    """Context window configuration."""
+class QdrantConfig(BaseSettings):
+    """Qdrant vector store settings."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    CONTEXT_SIMPLE_TOKENS: int = Field(default=800)
-    CONTEXT_COMPLEX_TOKENS: int = Field(default=4000)
-    CONTEXT_HISTORY_MESSAGES: int = Field(default=3)
-    CONTEXT_SUMMARY_LIMIT: int = Field(default=150)
-
-    # Lowercase aliases
-    @property
-    def simple_query_tokens(self) -> int:
-        return self.CONTEXT_SIMPLE_TOKENS
-
-    @property
-    def complex_query_tokens(self) -> int:
-        return self.CONTEXT_COMPLEX_TOKENS
-
-    @property
-    def full_history_messages(self) -> int:
-        return self.CONTEXT_HISTORY_MESSAGES
-
-    @property
-    def summary_token_limit(self) -> int:
-        return self.CONTEXT_SUMMARY_LIMIT
-
-
-# =============================================================================
-# MONITORING CONFIG
-# =============================================================================
-class MonitoringConfig(BaseSettings):
-    """Monitoring configuration."""
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    LOG_LEVEL: str = Field(default="INFO")
-    LOG_FORMAT: str = Field(default="json")
-    LOG_ALL_QUERIES: bool = Field(default=True)
-    METRICS_ENABLED: bool = Field(default=True)
-    METRICS_PORT: int = Field(default=9090)
-    TRACING_ENABLED: bool = Field(default=True)
-    TRACING_ENDPOINT: str = Field(default="http://localhost:4317")
-    TRACING_SAMPLE_RATE: float = Field(default=1.0)
-
-    # Lowercase aliases
-    @property
-    def log_level(self) -> str:
-        return self.LOG_LEVEL
-
-    @property
-    def log_format(self) -> str:
-        return self.LOG_FORMAT
-
-    @property
-    def log_all_queries(self) -> bool:
-        return self.LOG_ALL_QUERIES
-
-    @property
-    def metrics_enabled(self) -> bool:
-        return self.METRICS_ENABLED
-
-    @property
-    def metrics_port(self) -> int:
-        return self.METRICS_PORT
-
-    @property
-    def tracing_enabled(self) -> bool:
-        return self.TRACING_ENABLED
-
-    @property
-    def tracing_endpoint(self) -> str:
-        return self.TRACING_ENDPOINT
-
-    @property
-    def tracing_sample_rate(self) -> float:
-        return self.TRACING_SAMPLE_RATE
-
-
-# =============================================================================
-# DATABASE CONFIG
-# =============================================================================
-class DatabaseConfig(BaseSettings):
-    """Database configuration."""
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    # PostgreSQL
-    DATABASE_URL: str = Field(default="")
-    POSTGRES_POOL_SIZE: int = Field(default=10)
-
-    # Vector Store
-    VECTOR_STORE: str = Field(default="qdrant")
-
-    # Qdrant
     QDRANT_URL: str = Field(default="http://localhost:6333")
     QDRANT_API_KEY: Optional[str] = Field(default=None)
     QDRANT_COLLECTION: str = Field(default="documents")
-
-    # Pinecone
-    PINECONE_API_KEY: Optional[str] = Field(default=None)
-    PINECONE_ENVIRONMENT: str = Field(default="us-east-1")
-    PINECONE_INDEX_NAME: str = Field(default="rag-documents")
-
-    # Lowercase aliases
-    @property
-    def postgres_url(self) -> str:
-        return self.DATABASE_URL
-
-    @property
-    def postgres_pool_size(self) -> int:
-        return self.POSTGRES_POOL_SIZE
-
-    @property
-    def vector_store(self) -> str:
-        return self.VECTOR_STORE
 
     @property
     def qdrant_url(self) -> str:
@@ -462,10 +168,25 @@ class DatabaseConfig(BaseSettings):
 
 
 # =============================================================================
+# CACHE
+# =============================================================================
+class CacheConfig(BaseSettings):
+    """Embedding cache toggle."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    CACHE_EMBEDDING_ENABLED: bool = Field(default=True)
+
+    @property
+    def embedding_cache_enabled(self) -> bool:
+        return self.CACHE_EMBEDDING_ENABLED
+
+
+# =============================================================================
 # MAIN SETTINGS
 # =============================================================================
 class Settings(BaseSettings):
-    """Main application settings."""
+    """Application settings — the single source of truth."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -475,27 +196,20 @@ class Settings(BaseSettings):
     APP_ENV: str = Field(default="development")
     DEBUG: bool = Field(default=False)
 
-    # API
+    # API server
     API_HOST: str = Field(default="0.0.0.0")
     API_PORT: int = Field(default=8000)
     API_PREFIX: str = Field(default="/api/v1")
 
-    # Rate Limiting
-    RATE_LIMIT_REQUESTS: int = Field(default=100)
-    RATE_LIMIT_WINDOW: int = Field(default=60)
-
-    # CORS
+    # CORS (comma-separated origins, or "*")
     CORS_ORIGINS: str = Field(default="*")
 
     # Sub-configurations
-    embedding: EmbeddingModelConfig = Field(default_factory=EmbeddingModelConfig)
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
-    retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
-    cache: CacheConfig = Field(default_factory=CacheConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
-    context: ContextConfig = Field(default_factory=ContextConfig)
-    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
-    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    qdrant: QdrantConfig = Field(default_factory=QdrantConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
 
     # Paths
     base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent.parent)
@@ -516,10 +230,6 @@ class Settings(BaseSettings):
         return self.APP_VERSION
 
     @property
-    def environment(self) -> Environment:
-        return Environment(self.APP_ENV)
-
-    @property
     def debug(self) -> bool:
         return self.DEBUG
 
@@ -536,14 +246,6 @@ class Settings(BaseSettings):
         return self.API_PREFIX
 
     @property
-    def rate_limit_requests(self) -> int:
-        return self.RATE_LIMIT_REQUESTS
-
-    @property
-    def rate_limit_window(self) -> int:
-        return self.RATE_LIMIT_WINDOW
-
-    @property
     def cors_origins(self) -> list:
         if self.CORS_ORIGINS == "*":
             return ["*"]
@@ -557,9 +259,6 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         return self.APP_ENV == "development"
 
-    def get_embedding_model_id(self) -> str:
-        return self.embedding.model_identifier
-
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -567,5 +266,4 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# Global settings instance
 settings = get_settings()
