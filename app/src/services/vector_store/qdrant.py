@@ -8,6 +8,7 @@ Good for 10M-500M vectors.
 import logging
 import uuid
 from typing import Optional
+from app.src.core.config import settings
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, HnswConfigDiff, PointStruct, VectorParams, PointIdsList, FilterSelector, Filter, FieldCondition, MatchValue
@@ -36,7 +37,7 @@ class QdrantStore:
         url: str = "http://localhost:6333",
         api_key: Optional[str] = None,
         collection: str = "documents",
-        dimension: int = 1536,
+        dimension: int = settings.embedding.EMBEDDING_DIMENSIONS,
         distance: str = "cosine",
         hnsw_m: int = 16,
         hnsw_ef_construct: int = 100,
