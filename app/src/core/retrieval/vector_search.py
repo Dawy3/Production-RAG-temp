@@ -151,15 +151,16 @@ class VectorSearch:
             ]
             qdrant_filter = Filter(must=conditions)
 
-        hits = self._client.search(
+        response = self._client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=qdrant_filter,
+            with_payload=True,
         )
 
         results = []
-        for hit in hits:
+        for hit in response.points:
             payload = hit.payload or {}
             results.append(SearchResult(
                 chunk_id=str(hit.id),
