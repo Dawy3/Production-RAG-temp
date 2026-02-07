@@ -38,13 +38,10 @@ langchain-core>=1.2.7
 langchain-openai>=1.1.7
 langchain-community>=0.4.1
 langchain_huggingface>=1.2.0
-langgraph==1.0.7
-langsmith==0.6.6
 
 # =========================
 # Vector Stores / Search
 # =========================
-pinecone-client==3.2.2
 qdrant-client==1.16.2
 rank-bm25==0.2.2
 
