@@ -171,15 +171,46 @@ class QdrantConfig(BaseSettings):
 # CACHE
 # =============================================================================
 class CacheConfig(BaseSettings):
-    """Embedding cache toggle."""
+    """Embedding + semantic cache settings."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     CACHE_EMBEDDING_ENABLED: bool = Field(default=True)
 
+    CACHE_SEMANTIC_ENABLED: bool = Field(default=True)
+    CACHE_SEMANTIC_THRESHOLD: float = Field(default=0.9)
+    CACHE_SEMANTIC_TTL: int = Field(default=3600)  # 1 hour
+    CACHE_SEMANTIC_MAX_SIZE: int = Field(default=10000)
+    CACHE_RERANK_THRESHOLD: float = Field(default=0.7)
+    CACHE_CROSS_ENCODER_MODEL: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
     @property
     def embedding_cache_enabled(self) -> bool:
         return self.CACHE_EMBEDDING_ENABLED
+
+    @property
+    def semantic_cache_enabled(self) -> bool:
+        return self.CACHE_SEMANTIC_ENABLED
+
+    @property
+    def semantic_cache_threshold(self) -> float:
+        return self.CACHE_SEMANTIC_THRESHOLD
+
+    @property
+    def semantic_cache_ttl(self) -> int:
+        return self.CACHE_SEMANTIC_TTL
+
+    @property
+    def semantic_cache_max_size(self) -> int:
+        return self.CACHE_SEMANTIC_MAX_SIZE
+
+    @property
+    def rerank_threshold(self) -> float:
+        return self.CACHE_RERANK_THRESHOLD
+
+    @property
+    def cross_encoder_model(self) -> str:
+        return self.CACHE_CROSS_ENCODER_MODEL
 
 
 # =============================================================================
