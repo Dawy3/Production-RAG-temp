@@ -27,6 +27,7 @@ from src.core.query.classifier import create_classifier
 from src.core.chunking.strategies import get_chunker
 from src.services.document_processor import DocumentProcessor
 from src.core.memory.conversation import ConversationMemory
+from src.core.caching.semantic_cache import SemanticCache
 
 from api.v1 import v1_router
 
@@ -115,6 +116,15 @@ async def lifespan(app: FastAPI):
     # --- Conversation Memory ---
     conversation_memory = ConversationMemory()
 
+    # --- Semantic Cache ---
+    semantic_cache = None
+    if settings.cache.semantic_cache_enabled:
+        semantic_cache = SemanticCache(
+            embed_func=embedding_generator.embed_query,
+            max_cache_size=settings.cache.semantic_cache_max_size,
+        )
+        logger.info("Semantic cache enabled")
+
     # --- Upload directory ---
     upload_dir = str(settings.data_dir / "uploads")
     os.makedirs(upload_dir, exist_ok=True)
@@ -132,6 +142,7 @@ async def lifespan(app: FastAPI):
     app.state.chunker = chunker
     app.state.document_processor = document_processor
     app.state.conversation_memory = conversation_memory
+    app.state.semantic_cache = semantic_cache
     app.state.upload_dir = upload_dir
 
     logger.info("All services initialized successfully")
