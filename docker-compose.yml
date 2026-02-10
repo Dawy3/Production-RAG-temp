@@ -1,15 +1,121 @@
+# =============================================================================
+# RAG Knowledge Assistant - Production Docker Compose
+# =============================================================================
+#
+# Uses:
+#   - PostgreSQL: Local container (swap to cloud URL in .env for production)
+#   - Qdrant: Cloud (from .env)
+#   - Redis: Cloud (from .env)
+#
+# Run: docker-compose up -d
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag-frontend
+    restart: unless-stopped
+    ports:
+      - "30:30"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - rag-network
+
+  # ---------------------------------------------------------------------------
+  # Backend API (FastAPI)
+  # ---------------------------------------------------------------------------
   backend:
-    build: .
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag-backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file: .env
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
+    env_file:
+      - .env
     environment:
-      - BACKEND_URL=http://backend:8000
+      # Database - uses local postgres container
+      # For CLOUD: replace with your cloud PostgreSQL URL in .env
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/rag_db
+
+      # Vector Store (from .env - Qdrant Cloud)
+      - VECTOR_STORE=${VECTOR_STORE}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+
+      # Redis Cache (from .env - Redis Cloud)
+      - REDIS_URL=${REDIS_URL}
+
+      # LLM Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      - LLM_MODEL=${LLM_MODEL}
+
+      # Embedding Configuration
+      - EMBEDDING_MODEL_PROVIDER=${EMBEDDING_MODEL_PROVIDER}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS}
+      - HF_TOKEN=${HF_TOKEN}
+
+      # App settings
+      - APP_ENV=development
+      - LOG_LEVEL=INFO
+      - DEBUG=true
+
+      # CORS
+      - CORS_ORIGINS=*
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
     depends_on:
-      - backend
+      postgres:
+        condition: service_healthy
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: rag-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=rag_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  rag-network:
+    driver: bridge
+
+volumes:
+  backend_data:
+  backend_logs:
+  postgres_data:
