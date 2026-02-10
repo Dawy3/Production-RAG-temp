@@ -23,7 +23,6 @@ from src.core.generation.llm_client import create_llm_client
 from src.core.generation.context_builder import create_context_builder
 from src.core.generation.prompt_manager import PromptManager
 from src.core.query.classifier import create_classifier
-# from src.core.query.transformer import create_transformer
 from src.core.chunking.strategies import get_chunker
 from src.services.document_processor import DocumentProcessor
 from src.core.memory.conversation import ConversationMemory
@@ -32,9 +31,14 @@ from src.core.caching.semantic_cache import SemanticCache
 from api.v1 import v1_router
 
 logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
+    level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
 )
+# Only set YOUR app loggers to DEBUG, not third-party libs
+if settings.debug:
+    logging.getLogger("src").setLevel(logging.DEBUG)
+    logging.getLogger("api").setLevel(logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,9 +108,6 @@ async def lifespan(app: FastAPI):
     # --- Query Classifier ---
     query_classifier = create_classifier()
 
-    # # --- Multi-Query Transformer ---
-    # query_transformer = create_transformer(model=settings.llm.model)
-
     # --- Chunker ---
     chunker = get_chunker()
 
@@ -119,10 +120,7 @@ async def lifespan(app: FastAPI):
     # --- Semantic Cache ---
     semantic_cache = None
     if settings.cache.semantic_cache_enabled:
-        semantic_cache = SemanticCache(
-            embed_func=embedding_generator.embed_query,
-            max_cache_size=settings.cache.semantic_cache_max_size,
-        )
+        semantic_cache = SemanticCache()
         logger.info("Semantic cache enabled")
 
     # --- Upload directory ---
@@ -188,7 +186,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "backend.api.main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.is_development,
