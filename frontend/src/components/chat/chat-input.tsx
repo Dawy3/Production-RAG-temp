@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react'
 import { Send, Loader2 } from 'lucide-react'
 import { useChatStore, useSettingsStore } from '@/lib/store'
-import { sendChatMessage } from '@/lib/api'
+import { streamQuery } from '@/lib/api'
 
 interface ChatInputProps {
   conversationId: string
@@ -13,8 +13,8 @@ export function ChatInput({ conversationId }: ChatInputProps) {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const { addMessage, updateMessage, isStreaming, setStreaming } = useChatStore()
-  const { temperature, maxTokens } = useSettingsStore()
+  const { addMessage, updateMessage, appendToMessage, isStreaming, setStreaming, getCurrentConversation } = useChatStore()
+  const { temperature, maxTokens, topK } = useSettingsStore()
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -43,41 +43,52 @@ export function ChatInput({ conversationId }: ChatInputProps) {
     })
 
     try {
-      const response = await sendChatMessage({
+      const conversation = getCurrentConversation()
+      const sessionId = conversation?.sessionId || conversationId
+
+      const stream = streamQuery({
         query: userMessage,
-        session_id: conversationId,
+        session_id: sessionId,
+        top_k: topK,
         temperature,
         max_tokens: maxTokens,
+        use_history: true,
       })
 
-      // Update the message with full response and metadata
-      const conversations = useChatStore.getState().conversations
-      const conversation = conversations.find((c) => c.id === conversationId)
-      if (conversation) {
-        const updatedMessages = conversation.messages.map((msg) =>
-          msg.id === assistantMessageId
-            ? {
-                ...msg,
-                content: response.message,
-                sources: response.sources,
-                model: response.model,
-                latencyMs: response.latency_ms,
-              }
-            : msg
-        )
-        useChatStore.setState({
-          conversations: conversations.map((c) =>
-            c.id === conversationId ? { ...c, messages: updatedMessages } : c
-          ),
-        })
+      for await (const event of stream) {
+        switch (event.type) {
+          case 'metadata':
+            updateMessage(conversationId, assistantMessageId, {
+              sources: event.data.sources,
+              cached: event.data.cache,
+              route: event.data.route,
+              sessionId: event.data.session_id,
+            })
+            break
+
+          case 'token':
+            appendToMessage(conversationId, assistantMessageId, event.data.content)
+            break
+
+          case 'done':
+            updateMessage(conversationId, assistantMessageId, {
+              model: event.data.model,
+              latencyMs: event.data.latency_ms,
+            })
+            break
+
+          case 'error':
+            updateMessage(conversationId, assistantMessageId, {
+              content: `Error: ${event.data.detail}`,
+            })
+            break
+        }
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-      updateMessage(
-        conversationId,
-        assistantMessageId,
-        'Sorry, there was an error processing your request. Please try again.'
-      )
+      updateMessage(conversationId, assistantMessageId, {
+        content: 'Sorry, there was an error processing your request. Please try again.',
+      })
     } finally {
       setStreaming(false)
     }
@@ -118,7 +129,7 @@ export function ChatInput({ conversationId }: ChatInputProps) {
         </div>
       </div>
       <p className="text-xs text-muted-foreground text-center mt-2">
-        Press Enter to send, Shift+Enter for new line
+        Press Enter to send, Shift+Enter for new line · Chat expires after 24h
       </p>
     </div>
   )

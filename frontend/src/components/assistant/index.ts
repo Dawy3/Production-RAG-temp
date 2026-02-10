@@ -1,5 +1,0 @@
-export { AssistantProvider } from './AssistantProvider'
-export { AssistantPanel } from './AssistantPanel'
-export { AssistantHeader } from './AssistantHeader'
-export { AssistantChat } from './AssistantChat'
-export { AssistantSuggestions } from './AssistantSuggestions'

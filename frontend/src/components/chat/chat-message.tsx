@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Bot, ChevronDown, ChevronUp, Zap } from 'lucide-react'
+import { User, Bot, ChevronDown, ChevronUp, Zap, Database } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { clsx } from 'clsx'
 import type { ConversationMessage } from '@/lib/store'
@@ -66,13 +66,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
 
         {/* Metadata for assistant messages */}
-        {!isUser && (
+        {!isUser && message.content && (
           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
             {message.model && (
               <span className="flex items-center gap-1">
                 <Zap className="w-3 h-3" />
                 {message.model}
               </span>
+            )}
+            {message.cached && (
+              <span className="flex items-center gap-1 text-green-600">
+                <Database className="w-3 h-3" />
+                Cached
+              </span>
+            )}
+            {message.latencyMs && (
+              <span>{(message.latencyMs / 1000).toFixed(1)}s</span>
             )}
           </div>
         )}
