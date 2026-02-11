@@ -1,5 +1,4 @@
-# Chattie <img width="50" height="50" alt="image" src="https://github.com/user-attachments/assets/5217cc63-698c-46c3-8fa4-391d264b2217" />
-
+# Chattie_0.0 <img width="50" height="50" alt="robot_transparent" src="https://github.com/user-attachments/assets/d785b3b9-fe97-4c5e-b9ac-69955b078272" />
 
 
 
